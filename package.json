@@ -1,0 +1,21 @@
+{
+  "name": "@rbkmoney/angular-templates",
+  "version": "0.1.0",
+  "scripts": {
+    "prepublishOnly": "npm run build",
+    "clear": "shx rm -rf out",
+    "build": "npm run clear && tsc -p ./",
+    "watch": "npm run clear && tsc -watch -p ./"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "devDependencies": {
+    "shx": "^0.3.2",
+    "typescript": "^3.8.3"
+  },
+  "dependencies": {
+    "genry": "^0.15.0",
+    "lodash": "^4.17.15"
+  }
+}
