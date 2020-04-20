@@ -30,6 +30,12 @@ function createComponentTemplate(
 
     const children: StructureTemplate[] = [];
 
+    const componentTemplateContent = html`
+        ${hasTheme ? `<div class="${selector}">` : ""}
+        <ng-content></ng-content>
+        ${hasTheme ? `</div>` : ""}
+    `;
+
     children.push({
         path: `${filename}.component.ts`,
         content: `
@@ -40,7 +46,7 @@ function createComponentTemplate(
                 templateUrl: ${
                     hasTemplate
                         ? `'${filename}.component.html'`
-                        : "`<ng-content></ng-content>`"
+                        : `\`${componentTemplateContent}\``
                 },
                 ${hasStyle ? `styleUrls: ['${filename}.component.scss'],` : ""}
                 changeDetection: ChangeDetectionStrategy.OnPush
@@ -54,8 +60,7 @@ function createComponentTemplate(
             path: `${filename}.component.scss`,
             content: css`
                 :host {
-                    .${selector} {
-                    }
+                    ${hasTheme ? `.${selector} {}` : ""}
                 }
             `,
         });
@@ -81,11 +86,7 @@ function createComponentTemplate(
     if (hasTemplate) {
         children.push({
             path: `${filename}.component.html`,
-            content: html`
-                <div class="${selector}">
-                    <ng-content></ng-content>
-                </div>
-            `,
+            content: componentTemplateContent,
         });
     }
 
@@ -210,13 +211,13 @@ export default [
 
                             ${[
                                 hasComponent
-                                    ? `import * from './${filename}.component'`
+                                    ? `import {${className}Component} from './${filename}.component'`
                                     : "",
                                 hasPipe
-                                    ? `import * from './${filename}.pipe'`
+                                    ? `import {${className}Pipe} from './${filename}.pipe'`
                                     : "",
                                 hasService
-                                    ? `import * from './${filename}.service'`
+                                    ? `import {${className}Service} from './${filename}.service'`
                                     : "",
                             ]
                                 .filter((v) => v)

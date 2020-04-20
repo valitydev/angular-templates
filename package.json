@@ -1,6 +1,6 @@
 {
   "name": "@rbkmoney/angular-templates",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "scripts": {
     "prepublishOnly": "npm run build",
     "clear": "shx rm -rf out",
@@ -11,6 +11,7 @@
     "registry": "https://npm.pkg.github.com/"
   },
   "devDependencies": {
+    "@types/lodash": "^4.14.150",
     "shx": "^0.3.2",
     "typescript": "^3.8.3"
   },
