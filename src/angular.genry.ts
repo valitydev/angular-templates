@@ -210,13 +210,13 @@ export default [
 
                             ${[
                                 hasComponent
-                                    ? `export * from './${filename}.component'`
+                                    ? `import * from './${filename}.component'`
                                     : "",
                                 hasPipe
-                                    ? `export * from './${filename}.pipe'`
+                                    ? `import * from './${filename}.pipe'`
                                     : "",
                                 hasService
-                                    ? `export * from './${filename}.service'`
+                                    ? `import * from './${filename}.service'`
                                     : "",
                             ]
                                 .filter((v) => v)
