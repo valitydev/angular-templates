@@ -214,7 +214,7 @@ export default [
                                     });
 
                                     it('should be created', () => {
-                                        expect(service).toBeTruthy();
+                                        expect(component).toBeTruthy();
                                     });
 
                                     describe('methods', () => {
@@ -235,21 +235,6 @@ export default [
                                 @Injectable()
                                 export class ${partClassName} {
                                     constructor() {}
-                                }
-                            `,
-                    });
-                    break;
-                case PartType.pipe:
-                    children.push({
-                        path: `${partFilename}.ts`,
-                        content: `
-                                import { Pipe, PipeTransform } from '@angular/core';
-    
-                                @Pipe({name: '${camelCaseName}'})
-                                export class ${partClassName} implements PipeTransform {
-                                    transform(value: string) {
-                                        return value;
-                                    }
                                 }
                             `,
                     });
@@ -281,6 +266,21 @@ export default [
                                     describe('methods', () => {
                                     });
                                 });
+                            `,
+                    });
+                    break;
+                case PartType.pipe:
+                    children.push({
+                        path: `${partFilename}.ts`,
+                        content: `
+                                import { Pipe, PipeTransform } from '@angular/core';
+    
+                                @Pipe({name: '${camelCaseName}'})
+                                export class ${partClassName} implements PipeTransform {
+                                    transform(value: string) {
+                                        return value;
+                                    }
+                                }
                             `,
                     });
                     break;
