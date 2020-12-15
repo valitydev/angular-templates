@@ -1,4 +1,4 @@
-import { css, html, StructureTemplate, Template } from "genry";
+import { css, html, StructureTemplate, TemplateObject } from "genry";
 import { camelCase, kebabCase, upperFirst } from "lodash";
 
 enum ComponentPart {
@@ -7,12 +7,15 @@ enum ComponentPart {
     theme,
 }
 
-enum Part {
-    service,
+enum Type {
     module,
-    pipe,
+    partOfModule,
+}
+
+enum PartType {
     component,
-    index,
+    service,
+    pipe,
 }
 
 function createComponentTemplate(
@@ -42,14 +45,18 @@ function createComponentTemplate(
             import { ChangeDetectionStrategy, Component } from '@angular/core';
 
             @Component({
-                selector: '${selector}',
-                templateUrl: ${
-                    hasTemplate
-                        ? `'${filename}.component.html'`
-                        : `\`${componentTemplateContent}\``
-                },
-                ${hasStyle ? `styleUrls: ['${filename}.component.scss'],` : ""}
-                changeDetection: ChangeDetectionStrategy.OnPush
+                ${[
+                    `selector: '${selector}',`,
+                    `templateUrl: ${
+                        hasTemplate
+                            ? `'${filename}.component.html'`
+                            : `\`${componentTemplateContent}\``
+                    },`,
+                    hasStyle && `styleUrls: ['${filename}.component.scss'],`,
+                    "changeDetection: ChangeDetectionStrategy.OnPush,",
+                ]
+                    .filter((v) => v)
+                    .join("\n")}
             })
             export class ${className}Component {}
         `,
@@ -94,197 +101,236 @@ function createComponentTemplate(
 }
 
 export default [
-    { name: "Create component", value: Part.component },
-    { name: "Create module", value: Part.module },
-    { name: "Create service", value: Part.service },
-    { name: "Create pipe", value: Part.pipe },
+    { name: "Create module", value: Type.module },
+    { name: "Create part of module", value: Type.partOfModule },
 ].map(
-    ({ name, value }) =>
-        new Template({
-            name,
-            description: "Angular",
-            questions: [
-                {
-                    type: "text",
-                    name: "name",
-                    message: "Name",
-                },
-                {
-                    type: "multiselect",
-                    name: "parts",
-                    message: "Pick parts",
-                    choices: [
-                        {
-                            title: "Module",
-                            value: Part.module,
-                            selected: value === Part.module,
-                        },
-                        {
-                            title: "Component",
-                            value: Part.component,
-                            selected: value === Part.component,
-                        },
-                        {
-                            title: "Service",
-                            value: Part.service,
-                            selected: value === Part.service,
-                        },
-                        {
-                            title: "Pipe",
-                            value: Part.pipe,
-                            selected: value === Part.pipe,
-                        },
-                        {
-                            title: "Index",
-                            value: Part.index,
-                            selected: true,
-                        },
-                    ] as any,
-                },
-                {
-                    type: (_, { parts }) =>
-                        parts.includes(Part.component) ? "multiselect" : null,
-                    name: "componentParts",
-                    message: "Pick component parts",
-                    choices: [
-                        {
-                            title: "Template",
-                            value: ComponentPart.template,
-                            selected: true,
-                        },
-                        {
-                            title: "Style",
-                            value: ComponentPart.style,
-                            selected: true,
-                        },
-                        { title: "Theme", value: ComponentPart.theme },
-                    ] as any,
-                },
-                {
-                    type: "toggle",
-                    name: "hasDirectory",
-                    message: "With directory",
-                    initial: true,
-                    active: "Yes",
-                    inactive: "No",
-                },
-            ],
-            template: (
-                { name, componentParts, parts, hasDirectory },
-                { template: { prefix } }
-            ) => {
-                const filename = kebabCase(name);
-                const camelCaseName = camelCase(name);
-                const className = upperFirst(camelCaseName);
+    ({ name, value }): TemplateObject => ({
+        name,
+        description: "Angular",
+        questions: [
+            {
+                type: "text",
+                name: "name",
+                message: "Name",
+            },
+            {
+                type: "select",
+                name: "partType",
+                message: "Module type",
+                choices: [
+                    {
+                        title: "Component",
+                        value: PartType.component,
+                    },
+                    {
+                        title: "Service",
+                        value: PartType.service,
+                    },
+                    {
+                        title: "Pipe",
+                        value: PartType.pipe,
+                    },
+                ],
+            },
+            {
+                type: (_, { partType }) =>
+                    partType === PartType.component ? "multiselect" : null,
+                name: "componentParts",
+                message: "Pick component parts",
+                choices: [
+                    {
+                        title: "Template",
+                        value: ComponentPart.template,
+                        selected: true,
+                    },
+                    {
+                        title: "Style",
+                        value: ComponentPart.style,
+                    },
+                    {
+                        title: "Theme",
+                        value: ComponentPart.theme,
+                    },
+                ] as any,
+            },
+        ],
+        template: (
+            { name, componentParts, partType, hasDirectory },
+            { template: { prefix } }
+        ) => {
+            const filename = kebabCase(name);
+            const camelCaseName = camelCase(name);
+            const className = upperFirst(camelCaseName);
+            const partNameByPartType = {
+                [PartType.component]: "component",
+                [PartType.service]: "service",
+                [PartType.pipe]: "pipe",
+            };
+            const partClassName = `${className}${upperFirst(
+                partNameByPartType[partType]
+            )}`;
+            const partFilename = `${filename}.${partNameByPartType[partType]}`;
+            const partImport = `import {${partClassName}} from './${partFilename}';`;
+            const partExport = `export * from './${partFilename}';`;
 
-                const hasService = parts.includes(Part.service);
-                const hasModule = parts.includes(Part.module);
-                const hasPipe = parts.includes(Part.pipe);
-                const hasComponent = parts.includes(Part.component);
-                const hasIndex = parts.includes(Part.index);
+            const children: StructureTemplate[] = [];
 
-                const children: StructureTemplate[] = [];
-
-                if (hasComponent) {
+            switch (partType) {
+                case PartType.component:
                     children.push(
                         ...createComponentTemplate(prefix, name, componentParts)
                     );
-                }
-                if (hasService) {
                     children.push({
-                        path: `${filename}.service.ts`,
+                        path: `${partFilename}.spec.ts`,
                         content: `
-                            import { Injectable } from '@angular/core';
+                                import { Component, DebugElement } from '@angular/core';
+                                import { ComponentFixture, TestBed } from '@angular/core/testing';
+                                import { By } from '@angular/platform-browser';
 
-                            @Injectable()
-                            export class ${className}Service {
-                                constructor() {}
-                            }
-                        `,
+                                ${partImport}
+    
+                                @Component({
+                                    selector: 'dsh-host',
+                                    template: \`<dsh-${filename}></dsh-${filename}>\`,
+                                })
+                                class HostComponent {}
+
+                                describe('${partClassName}', () => {
+                                    let fixture: ComponentFixture<HostComponent>;
+                                    let debugElement: DebugElement;
+                                    let component: ${partClassName};
+
+                                    beforeEach(async () => {
+                                        await TestBed.configureTestingModule({
+                                            imports: [],
+                                            declarations: [HostComponent, ${partClassName}]
+                                        }).compileComponents();
+
+                                        fixture = TestBed.createComponent(HostComponent);
+                                        debugElement = fixture.debugElement.query(By.directive(${partClassName}));
+                                        component = debugElement.componentInstance;
+
+                                        fixture.detectChanges();
+                                    });
+
+                                    it('should be created', () => {
+                                        expect(service).toBeTruthy();
+                                    });
+
+                                    describe('methods', () => {
+                                    });
+
+                                    describe('template', () => {
+                                    });
+                                });
+                            `,
                     });
-                }
-                if (hasModule) {
+                    break;
+                case PartType.service:
                     children.push({
-                        path: `${filename}.module.ts`,
+                        path: `${partFilename}.ts`,
                         content: `
+                                import { Injectable } from '@angular/core';
+    
+                                @Injectable()
+                                export class ${partClassName} {
+                                    constructor() {}
+                                }
+                            `,
+                    });
+                    break;
+                case PartType.pipe:
+                    children.push({
+                        path: `${partFilename}.ts`,
+                        content: `
+                                import { Pipe, PipeTransform } from '@angular/core';
+    
+                                @Pipe({name: '${camelCaseName}'})
+                                export class ${partClassName} implements PipeTransform {
+                                    transform(value: string) {
+                                        return value;
+                                    }
+                                }
+                            `,
+                    });
+                    children.push({
+                        path: `${partFilename}.spec.ts`,
+                        content: `
+                                import { TestBed } from '@angular/core/testing';
+
+                                ${partImport}
+    
+                                describe('${partClassName}', () => {
+                                    let service: ${partClassName};
+
+                                    beforeEach(() => {
+                                        TestBed.configureTestingModule({
+                                            imports: [],
+                                            providers: [
+                                                ${partClassName}
+                                            ],
+                                        });
+
+                                        service = TestBed.inject(${partClassName});
+                                    });
+
+                                    it('should be created', () => {
+                                        expect(service).toBeTruthy();
+                                    });
+
+                                    describe('methods', () => {
+                                    });
+                                });
+                            `,
+                    });
+                    break;
+            }
+            if (value === Type.module) {
+                children.push({
+                    path: `${filename}.module.ts`,
+                    content: `
                             import { NgModule } from '@angular/core';
 
-                            ${[
-                                hasComponent
-                                    ? `import {${className}Component} from './${filename}.component'`
-                                    : "",
-                                hasPipe
-                                    ? `import {${className}Pipe} from './${filename}.pipe'`
-                                    : "",
-                                hasService
-                                    ? `import {${className}Service} from './${filename}.service'`
-                                    : "",
-                            ]
-                                .filter((v) => v)
-                                .join("\n")}
-
-                            const EXPORTED_DECLARATIONS = [${[
-                                hasComponent ? `${className}Component` : "",
-                                hasPipe ? `${className}Pipe` : "",
-                            ]
-                                .filter((v) => v)
-                                .join(",")}];
+                            ${partImport}
                             
                             @NgModule({
                                 imports: [],
-                                declarations: EXPORTED_DECLARATIONS,
-                                exports: EXPORTED_DECLARATIONS,
+                                declarations: [${
+                                    partType !== PartType.service
+                                        ? partClassName
+                                        : ""
+                                }],
+                                exports: [${
+                                    partType !== PartType.service
+                                        ? partClassName
+                                        : ""
+                                }],
                                 providers: [${
-                                    hasService ? `${className}Service` : ""
+                                    partType === PartType.service
+                                        ? partClassName
+                                        : ""
                                 }]
                             })
                             export class ${className}Module {}
                         `,
-                    });
-                }
-                if (hasPipe) {
-                    children.push({
-                        path: `${filename}.pipe.ts`,
-                        content: `
-                            import { Pipe, PipeTransform } from '@angular/core';
+                });
+                children.push({
+                    path: `index.ts`,
+                    content: `
+                        ${partExport}
+                        export * from './${filename}.module'
+                    `,
+                });
+            }
 
-                            @Pipe({name: '${camelCaseName}'})
-                            export class ${className}Pipe implements PipeTransform {
-                                transform(value: any) {
-                                    return value;
-                                }
-                            }
-                        `,
-                    });
-                }
-                if (hasIndex) {
-                    children.push({
-                        path: `index.ts`,
-                        content: [
-                            hasComponent
-                                ? `export * from './${filename}.component'`
-                                : "",
-                            hasModule
-                                ? `export * from './${filename}.module'`
-                                : "",
-                            hasPipe ? `export * from './${filename}.pipe'` : "",
-                            hasService
-                                ? `export * from './${filename}.service'`
-                                : "",
-                        ]
-                            .filter((v) => v)
-                            .join("\n"),
-                    });
-                }
-
-                return hasDirectory
-                    ? [
-                          {
-                              path: filename,
-                              children,
-                          },
-                      ]
-                    : children;
-            },
-        })
+            return hasDirectory
+                ? [
+                      {
+                          path: filename,
+                          children,
+                      },
+                  ]
+                : children;
+        },
+    })
 );
