@@ -155,7 +155,7 @@ export default [
             },
         ],
         template: (
-            { name, componentParts, partType, hasDirectory },
+            { name, componentParts, partType },
             { template: { prefix } }
         ) => {
             const filename = kebabCase(name);
@@ -323,14 +323,12 @@ export default [
                 });
             }
 
-            return hasDirectory
-                ? [
-                      {
-                          path: filename,
-                          children,
-                      },
-                  ]
-                : children;
+            return [
+                {
+                    path: filename,
+                    children,
+                },
+            ];
         },
     })
 );
