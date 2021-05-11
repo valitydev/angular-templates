@@ -17,6 +17,6 @@
   },
   "dependencies": {
     "genry": "^0.16.0",
-    "lodash": "^4.17.20"
+    "lodash": "^4.17.21"
   }
 }
